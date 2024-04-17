@@ -75,31 +75,27 @@ sys_sleep(void)
   return 0;
 }
 
-
-#ifdef LAB_PGTBL
 int
 sys_pgaccess(void)
 {
-  pagetable_t pagetable = myproc()->pagetable;
-  uint64 first_addr, mask_addr;
-  int check_size;
-  uint64 mask = 0;
-  if (argaddr(0, &first_addr) == -1 || argint(1, &check_size) == -1 || argaddr(2, &mask_addr) == -1) {
-      return -1;
-  }
-  pte_t* first_pte = walk(pagetable, first_addr, 0);
-  for(int i = 0; i < check_size; ++i){
-    if((first_pte[i] & PTE_A) && (first_pte[i] & PTE_V)){
-        mask |= (1 << i);
-        first_pte[i] ^= PTE_A;
+    pagetable_t pagetable = myproc()->pagetable;
+    uint64 begin;
+    uint64 user_add;
+    int pages;
+    if (argaddr(0, &begin) == -1 || argint(1, &pages) == -1 || argaddr(2, &user_add) == -1) {
+        return -1;
     }
-  }
-  if (copyout(pagetable, mask_addr, (char *)mask, sizeof(mask)) == -1) {
-      return -1;
-  }
-  return 0;
+    uint64 mask = 0;
+    for (int i = 0; i < pages; ++i) {
+        pte_t *pte = walk(pagetable, begin + i * PGSIZE, 0);
+        if (*pte & PTE_A) {
+            mask |= (1 << i);
+            *pte &= ~PTE_A;
+        }
+    }
+    copyout(pagetable, user_add, (char *)&mask, sizeof(mask));
+    return 0;
 }
-#endif
 
 uint64
 sys_kill(void)

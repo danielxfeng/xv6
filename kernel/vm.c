@@ -443,11 +443,10 @@ vmprint_helper(pagetable_t pagetable, int layer)
             for(int j = 0; j < layer; ++j) {
                 printf(".. ");
             }
-            printf("..%d: pte %p pa %p\n", i, (void*)pte, (void*)child);
-            if (layer >= 2) {
-                return;
+            printf("..%d: pte %p pa %p\n", i, pte, child);
+            if(layer <= 2) {
+                vmprint_helper((pagetable_t)child, layer + 1);
             }
-            vmprint_helper((pagetable_t)child, layer + 1);
         }
     }
 }
@@ -455,5 +454,5 @@ vmprint_helper(pagetable_t pagetable, int layer)
 void vmprint(pagetable_t pagetable)
 {
     printf("page table %p\n", pagetable);
-    vmprint_helper((void*)pagetable, 0);
+    vmprint_helper(pagetable, 0);
 }
