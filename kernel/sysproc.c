@@ -7,7 +7,6 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "sysinfo.h"
-#include "kalloc.h"
 
 uint64
 sys_exit(void)
