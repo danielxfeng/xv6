@@ -127,6 +127,12 @@ found:
     return 0;
   }
 
+  if((p->sigframe = (struct trapframe *)kalloc()) == 0){
+      freeproc(p);
+      release(&p->lock);
+      return 0;
+  }
+
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
   if(p->pagetable == 0){
@@ -140,6 +146,10 @@ found:
   memset(&p->context, 0, sizeof(p->context));
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
+  p->ticks = 0;
+  p->handler = 0;
+  p->ticks_since_last_call = 0;
+  p->is_handling = 0;
 
   return p;
 }
@@ -152,6 +162,8 @@ freeproc(struct proc *p)
 {
   if(p->trapframe)
     kfree((void*)p->trapframe);
+  if(p->sigframe)
+    kfree((void*)p->sigframe);
   p->trapframe = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
@@ -163,6 +175,10 @@ freeproc(struct proc *p)
   p->chan = 0;
   p->killed = 0;
   p->xstate = 0;
+  p->ticks = 0;
+  p->handler = 0;
+  p->ticks_since_last_call = 0;
+  p->is_handling = 0;
   p->state = UNUSED;
 }
 
