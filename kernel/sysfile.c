@@ -316,6 +316,34 @@ sys_open(void)
     }
   }
 
+  if(!(omode & O_NOFOLLOW)){
+    int rec_left = 10;
+    struct inode* next_file;
+    while(rec_left && ip->type == T_SYMLINK){
+
+      if(readi(ip, 0, (uint64)path, 0, MAXPATH) == 0){
+        iunlockput(ip);
+        end_op();
+        return -1;
+      }
+
+      if((next_file = namei(path)) == 0){
+        iunlockput(ip);
+        end_op();
+        return -1;
+      }
+      iunlockput(ip);
+      ip = next_file;
+      rec_left--;
+      ilock(ip);
+    }
+    if(rec_left <= 0){
+      iunlockput(ip);
+      end_op();
+      return -1;
+    }
+  }
+
   if(ip->type == T_DEVICE && (ip->major < 0 || ip->major >= NDEV)){
     iunlockput(ip);
     end_op();
@@ -349,6 +377,29 @@ sys_open(void)
   end_op();
 
   return fd;
+}
+
+uint64
+sys_symlink()
+{
+    char tar_path[MAXPATH], path[MAXPATH];
+    if (argstr(0, tar_path, MAXPATH) != 0 || argstr(1, path, MAXPATH) != 0) {
+        return -1;
+    }
+    struct inode* inode;
+    begin_op();
+    inode = create(path, T_SYMLINK, 0, 0);
+    if(inode == 0){
+        end_op();
+        return -1;
+    }
+    if (writei(inode, 0, (uint64)tar_path, 0, strlen(tar_path)) != 0) {
+        end_op();
+        return -1;
+    }
+    iunlockput(inode);
+    end_op();
+    return 0;
 }
 
 uint64
@@ -393,7 +444,7 @@ sys_chdir(void)
   char path[MAXPATH];
   struct inode *ip;
   struct proc *p = myproc();
-  
+
   begin_op();
   if(argstr(0, path, MAXPATH) < 0 || (ip = namei(path)) == 0){
     end_op();
